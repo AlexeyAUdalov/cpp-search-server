@@ -80,7 +80,7 @@ public:
         }
         return matched_documents;
     }
-
+        
 private:
     struct Query {
         set<string> plus_query_words;
@@ -118,6 +118,10 @@ private:
         return query_words;
     }
 
+    double GetInverseDocumentFrequency(const string& wordd) const {
+        return log(static_cast<double>(document_count_) / static_cast<double>(word_to_document_freqs_.at(wordd).size()));
+    }
+
     vector<Document> FindAllDocuments(const Query& query_words) const {
         vector<Document> matched_documents;
         map<int, double> found_documents_and_relevance;
@@ -131,12 +135,9 @@ private:
         }
         for (const auto& word : query_words.plus_query_words) {
             if (word_to_document_freqs_.count(word)) {
-                double inverse_document_frequency =
-                    log(static_cast<double>(document_count_)
-                        / static_cast<double>(word_to_document_freqs_.at(word).size()));
+                double inverse_document_frequency = GetInverseDocumentFrequency(word);
                 for (const auto& [document_id, term_frequency] : word_to_document_freqs_.at(word)) {
                     found_documents_and_relevance[document_id] += inverse_document_frequency * term_frequency;
-
                 }
             }
         }
@@ -146,7 +147,7 @@ private:
             }
         }
         return matched_documents;
-    }
+    }    
 };
 
 SearchServer CreateSearchServer() {
