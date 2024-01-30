@@ -11,6 +11,7 @@
 using namespace std;
 
 const int MAX_RESULT_DOCUMENT_COUNT = 5;
+const double EPSILON = 1e-6;
 
 string ReadLine() {
     string s;
@@ -98,16 +99,8 @@ public:
     }
 
     explicit SearchServer(const string& stop_words_text)
+        : SearchServer(SplitIntoWords(stop_words_text))  // Invoke delegating constructor from string container
     {
-        vector<string> words = SplitIntoWords(stop_words_text);
-        for (const auto& word : words) {
-            if (IsValidWord(word)) {
-                stop_words_.insert(word);
-            }
-            else {
-                throw invalid_argument("incorrect stop-words: there are invalid characters (characters with codes from 0 to 31) in the stop-words"s);
-            }
-        }
     }
 
     void AddDocument(int document_id, const string& document, DocumentStatus status,
@@ -127,6 +120,7 @@ public:
             word_to_document_freqs_[word][document_id] += inv_word_count;
         }
         documents_.emplace(document_id, DocumentData{ ComputeAverageRating(ratings), status });
+        document_id_sequence_.push_back(document_id);
     }
 
     template <typename DocumentPredicate>
@@ -141,7 +135,7 @@ public:
 
         sort(matched_documents.begin(), matched_documents.end(),
             [](const Document& lhs, const Document& rhs) {
-                if (abs(lhs.relevance - rhs.relevance) < 1e-6) {
+                if (abs(lhs.relevance - rhs.relevance) < EPSILON) {
                     return lhs.rating > rhs.rating;
                 }
                 else {
@@ -169,13 +163,9 @@ public:
         return static_cast<int>(documents_.size());
     }
 
-    int GetDocumentId(const int document_id) const {
-        if (document_id >= 0 && document_id < GetDocumentCount()) {
-            vector<int> document_ids;
-            for (const auto& [id, value] : documents_) {
-                document_ids.push_back(id);
-            }
-            return document_ids.at(document_id);
+    int GetDocumentId(const int index) const {
+        if (index >= 0 && index < GetDocumentCount()) {
+            return document_id_sequence_[index];
         }
         else {
             throw out_of_range("document_id is out of range"s);
@@ -224,6 +214,7 @@ private:
     set<string> stop_words_;
     map<string, map<int, double>> word_to_document_freqs_;
     map<int, DocumentData> documents_;
+    vector<int> document_id_sequence_;
 
     bool IsStopWord(const string& word) const {
         return stop_words_.count(word) > 0;
@@ -360,9 +351,9 @@ void PrintDocument(const Document& document) {
 }
 int main() {
     try {
-        //SearchServer search_server("is are wa\x12s a an in the with near at"s);
-        vector<string> stop_words = { "is"s, "are"s, "was"s, "a"s, "an"s, "in"s, "the"s, "with"s, "near"s, "at"s };
-        SearchServer search_server(stop_words);
+        SearchServer search_server("is are was a an in the with near at"s);
+        //vector<string> stop_words = { "is"s, "are"s, "was"s, "a"s, "an"s, "in"s, "the"s, "with"s, "near"s, "at"s };
+        //SearchServer search_server(stop_words);
 
         try {
             search_server.AddDocument(1, "a colorful parrot with green wings and red ta-il is lost"s, DocumentStatus::ACTUAL, { 7, 2, 7 });
@@ -425,7 +416,11 @@ int main() {
 
         try {
             tuple<vector<string>, DocumentStatus> result;
-            result = search_server.MatchDocument("a colorful parrot with green wings and red ta-il is lost"s, 1);
+            string search_sequence = "a colorful parrot with green wings and red ta-il is lost"s;
+            int document_id = 1;
+            result = search_server.MatchDocument(search_sequence, document_id);
+            cout << "The following words from search seaquence : '"s << search_sequence;
+            cout << "' were found in document with id = " << document_id << ":"s << endl;
             for (const auto& word : get<0>(result)) {
                 cout << word << endl;
             }
@@ -435,13 +430,15 @@ int main() {
             cout << "Error: "s << error_message.what() << endl;
         }
 
-        try {
-            cout << search_server.GetDocumentId(3) << endl;;
+        for (int i = 0; i < 5; ++i) {
+            try {
+                cout << "index = " << i << " -> ";
+                cout << "document_id = "s << search_server.GetDocumentId(i) << endl;;
+            }
+            catch (const out_of_range& error_message) {
+                cout << "Error: "s << error_message.what() << endl;
+            }
         }
-        catch (const out_of_range& error_message) {
-            cout << "Error: "s << error_message.what() << endl;
-        }
-
     }
     catch (const invalid_argument& error_message) {
         cout << "Error: "s << error_message.what() << endl;
