@@ -86,13 +86,10 @@ public:
     inline static constexpr int INVALID_DOCUMENT_ID = -1;
 
     template <typename StringContainer>
-    explicit SearchServer(const StringContainer& stop_words) {
-        set<string> words = MakeUniqueNonEmptyStrings(stop_words);
-        for (const auto& word : words) {
-            if (IsValidWord(word)) {
-                stop_words_.insert(word);
-            }
-            else {
+    explicit SearchServer(const StringContainer& stop_words)
+        : stop_words_(MakeUniqueNonEmptyStrings(stop_words)) {
+        for (const auto& word : stop_words_) {
+            if (!IsValidWord(word)) {
                 throw invalid_argument("incorrect stop-words: there are invalid characters (characters with codes from 0 to 31) in the stop-words"s);
             }
         }
@@ -211,7 +208,7 @@ private:
         int rating;
         DocumentStatus status;
     };
-    set<string> stop_words_;
+    const set<string> stop_words_;
     map<string, map<int, double>> word_to_document_freqs_;
     map<int, DocumentData> documents_;
     vector<int> document_id_sequence_;
