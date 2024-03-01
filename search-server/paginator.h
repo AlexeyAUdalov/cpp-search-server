@@ -3,8 +3,6 @@
 #include <iostream>
 #include <string>
 #include <vector>
-//#include "document.h"
-
 
 template <typename Iterator>
 class IteratorRange {
